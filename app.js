@@ -29,60 +29,54 @@ app.use(express.static("public"));
 async function main() {
   // Connect to the MongoDB database with the name "posts"
   await mongoose.connect('mongodb://127.0.0.1:27017/posts');
-
-  // Define a Mongoose schema for the "post" model
-  const postSchema = new mongoose.Schema({
-    title: String,
-    content: String
-  });
-
-  // Create a Mongoose model based on the defined schema
-  const post = mongoose.model('Post', postSchema);
-
-  // Define the route for the home page
-  app.get("/", function (req, res) {
-    // Find all posts from the database and render the home page with the retrieved posts
-    post.find({}).then(list=>{
-      res.render("home",{startingContent: homeStartingContent, posts: list});
-    }).catch(err=>{
-      console.log(err);
-    });
-  });
-
-  // Define the route for the "compose" page
-  app.get("/compose", function (req, res) {
-    // Render the "compose" page, which allows users to create new posts
-    res.render("compose");
-  });
-  
-  // Define the route for creating a new post
-  app.post("/compose", function(req, res){
-    // Create a new post with the title and content provided in the request body
-    post.create({title:req.body.postTitle, content:req.body.postBody}).then();
-    // Redirect the user back to the home page after creating the post
-    res.redirect("/");
-  });
-  
-  // Define the route for individual post pages
-  app.get("/posts/:postName",function(req, res){
-    // Extract the requested post title from the URL and convert it to lowercase
-    const requestedTitle = _.lowerCase(req.params.postName);
-    
-    // Find all posts from the database
-    post.find({}).then(list=>{
-      // Loop through the list of posts and check if any post title or ID matches the requested title
-      list.forEach(function(post){
-        const storedTitle = _.lowerCase(post.title);
-        const storedId = _.lowerCase(post._id);
-        if(storedTitle === requestedTitle || storedId === requestedTitle){
-          // If a matching post is found, render the "post" page with the post's title and content
-          res.render("post",{title: post.title, content: post.content});
-        }
-      });
-    });
-  });
 }
 
+// Define a Mongoose schema for the "post" model
+const postSchema = new mongoose.Schema({
+  title: String,
+  content: String
+});
+
+// Create a Mongoose model based on the defined schema
+const Post = mongoose.model('Post', postSchema);
+
+// Define the route for the home page
+app.get("/",async function (req, res) {
+  // Find all posts from the database and render the home page with the retrieved posts
+  const list = await Post.find({});
+  res.render("home",{startingContent: homeStartingContent, posts: list});
+});
+
+// Define the route for the "compose" page
+app.get("/compose", function (req, res) {
+  // Render the "compose" page, which allows users to create new posts
+  res.render("compose");
+});
+
+// Define the route for creating a new post
+app.post("/compose",async function(req, res){
+  // Create a new post with the title and content provided in the request body
+  await Post.create({title:req.body.postTitle, content:req.body.postBody});
+  // Redirect the user back to the home page after creating the post
+  res.redirect("/");
+});
+
+// Define the route for individual post pages
+app.get("/posts/:postName",async function(req, res){
+  // Extract the requested post title from the URL and convert it to lowercase
+  const requestedTitle = _.lowerCase(req.params.postName);
+  const list = await Post.find({});
+  
+  // Find all posts from the database
+  list.forEach(function(post){
+    const storedTitle = _.lowerCase(post.title);
+    const storedId = _.lowerCase(post._id);
+    if(storedTitle === requestedTitle || storedId === requestedTitle){
+      // If a matching post is found, render the "post" page with the post's title and content
+      res.render("post",{title: post.title, content: post.content});
+    }
+  });
+});
 // Define the route for the "about" page
 app.get("/about", function (req, res) {
   // Render the "about" page with the predefined aboutContent
