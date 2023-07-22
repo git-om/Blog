@@ -1,60 +1,101 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const ejs = require("ejs");
-const _ = require("lodash");
+// Import required modules and packages
+const express = require("express"); // Express framework for building web applications
+const bodyParser = require("body-parser"); // Middleware for parsing request bodies
+const ejs = require("ejs"); // Templating engine for rendering dynamic HTML
+const _ = require("lodash"); // Utility library for various helper functions
+const mongoose = require('mongoose'); // Mongoose library for MongoDB interaction
 
-const homeStartingContent = "Lacus vel facilisis volutpat est velit egestas dui id ornare. Semper auctor neque vitae tempus quam. Sit amet cursus sit amet dictum sit amet justo. Viverra tellus in hac habitasse. Imperdiet proin fermentum leo vel orci porta. Donec ultrices tincidunt arcu non sodales neque sodales ut. Mattis molestie a iaculis at erat pellentesque adipiscing. Magnis dis parturient montes nascetur ridiculus mus mauris vitae ultricies. Adipiscing elit ut aliquam purus sit amet luctus venenatis lectus. Ultrices vitae auctor eu augue ut lectus arcu bibendum at. Odio euismod lacinia at quis risus sed vulputate odio ut. Cursus mattis molestie a iaculis at erat pellentesque adipiscing.";
-const aboutContent = "Hac habitasse platea dictumst vestibulum rhoncus est pellentesque. Dictumst vestibulum rhoncus est pellentesque elit ullamcorper. Non diam phasellus vestibulum lorem sed. Platea dictumst quisque sagittis purus sit. Egestas sed sed risus pretium quam vulputate dignissim suspendisse. Mauris in aliquam sem fringilla. Semper risus in hendrerit gravida rutrum quisque non tellus orci. Amet massa vitae tortor condimentum lacinia quis vel eros. Enim ut tellus elementum sagittis vitae. Mauris ultrices eros in cursus turpis massa tincidunt dui.";
-const contactContent = "Scelerisque eleifend donec pretium vulputate sapien. Rhoncus urna neque viverra justo nec ultrices. Arcu dui vivamus arcu felis bibendum. Consectetur adipiscing elit duis tristique. Risus viverra adipiscing at in tellus integer feugiat. Sapien nec sagittis aliquam malesuada bibendum arcu vitae. Consequat interdum varius sit amet mattis. Iaculis nunc sed augue lacus. Interdum posuere lorem ipsum dolor sit amet consectetur adipiscing elit. Pulvinar elementum integer enim neque. Ultrices gravida dictum fusce ut placerat orci nulla. Mauris in aliquam sem fringilla ut morbi tincidunt. Tortor posuere ac ut consequat semper viverra nam libero.";
+// Execute the main function which connects to the database
+main().catch(err => console.log(err));
 
+// Sample content for different sections of the website
+const homeStartingContent = "Lacus vel facilisis volutpat est velit egestas dui id ornare...";
+const aboutContent = "Hac habitasse platea dictumst vestibulum rhoncus est pellentesque...";
+const contactContent = "Scelerisque eleifend donec pretium vulputate sapien...";
+
+// Create an Express application
 const app = express();
 
+// Set the view engine to EJS
 app.set('view engine', 'ejs');
 
+// Use bodyParser middleware to parse incoming request bodies
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Serve static files from the "public" directory
 app.use(express.static("public"));
 
-const posts =[]
+// Main function that connects to the MongoDB database
+async function main() {
+  // Connect to the MongoDB database with the name "posts"
+  await mongoose.connect('mongodb://127.0.0.1:27017/posts');
 
-app.get("/", function (req, res) {
-  res.render("home",{startingContent: homeStartingContent, posts: posts});
-})
+  // Define a Mongoose schema for the "post" model
+  const postSchema = new mongoose.Schema({
+    title: String,
+    content: String
+  });
 
+  // Create a Mongoose model based on the defined schema
+  const post = mongoose.model('Post', postSchema);
+
+  // Define the route for the home page
+  app.get("/", function (req, res) {
+    // Find all posts from the database and render the home page with the retrieved posts
+    post.find({}).then(list=>{
+      res.render("home",{startingContent: homeStartingContent, posts: list});
+    }).catch(err=>{
+      console.log(err);
+    });
+  });
+
+  // Define the route for the "compose" page
+  app.get("/compose", function (req, res) {
+    // Render the "compose" page, which allows users to create new posts
+    res.render("compose");
+  });
+  
+  // Define the route for creating a new post
+  app.post("/compose", function(req, res){
+    // Create a new post with the title and content provided in the request body
+    post.create({title:req.body.postTitle, content:req.body.postBody}).then();
+    // Redirect the user back to the home page after creating the post
+    res.redirect("/");
+  });
+  
+  // Define the route for individual post pages
+  app.get("/posts/:postName",function(req, res){
+    // Extract the requested post title from the URL and convert it to lowercase
+    const requestedTitle = _.lowerCase(req.params.postName);
+    
+    // Find all posts from the database
+    post.find({}).then(list=>{
+      // Loop through the list of posts and check if any post title or ID matches the requested title
+      list.forEach(function(post){
+        const storedTitle = _.lowerCase(post.title);
+        const storedId = _.lowerCase(post._id);
+        if(storedTitle === requestedTitle || storedId === requestedTitle){
+          // If a matching post is found, render the "post" page with the post's title and content
+          res.render("post",{title: post.title, content: post.content});
+        }
+      });
+    });
+  });
+}
+
+// Define the route for the "about" page
 app.get("/about", function (req, res) {
+  // Render the "about" page with the predefined aboutContent
   res.render("about",{aboutContent: aboutContent});
-})
+});
 
+// Define the route for the "contact" page
 app.get("/contact", function (req, res) {
+  // Render the "contact" page with the predefined contactContent
   res.render("contact",{contactContent: contactContent});
-})
+});
 
-app.get("/compose", function (req, res) {
-  res.render("compose");
-})
-
-app.post("/compose", function(req, res){
-  const post = {
-    title: req.body.postTitle,
-    content: req.body.postBody
-  }
-  posts.push(post);
-  res.redirect("/");
-})
-
-app.get("/posts/:postName",function(req, res){
-  const requestedTitle = _.lowerCase(req.params.postName);
-  posts.forEach(function(post){
-    const storedTitle = _.lowerCase(post.title);
-    if(storedTitle === requestedTitle){
-      res.render("post",{title: post.title, content: post.content});
-    }
-  })
-})
-
-
-
-
-
+// Start the server on port 3000
 app.listen(3000, function () {
   console.log("Server started on port 3000");
 });
